@@ -2,22 +2,26 @@
 
 ## Usage
 
-<details open><summary>Windows</summary>
+### Windows
+
 Command Prompt
+
 ```sh
 mlua-gen help
 ```
+
 Powershell
+
 ```sh
 .\mlua-gen help
 ```
-</details>
-<details><summary>Linux & macOS</summary>
+
+### Linux & macOS
+
 ```sh
 chmod +x ./mlua-gen
 ./mlua-gen help
 ```
-</details>
 
 ## Building
 
