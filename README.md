@@ -1,5 +1,9 @@
 # MangLua definitions generator
 
+MangLua LUA definition files generation utility
+
+#### [Download](https://github.com/Sillerstone/manglua-definitions-generator/releases/tag/latest)
+
 ## Usage
 
 ### Windows
