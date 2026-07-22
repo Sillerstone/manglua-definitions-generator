@@ -10,7 +10,7 @@ Command Prompt
 mlua-gen help
 ```
 
-Powershell
+PowerShell
 
 ```sh
 .\mlua-gen help
