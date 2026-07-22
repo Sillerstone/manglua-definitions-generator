@@ -16,13 +16,13 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: my-app-linux-x64
-            binary_name: my-app
+            artifact_name: mlua-gen-linux-x64
+            binary_name: mlua-gen
 
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: my-app-windows-x64
-            binary_name: my-app.exe
+            artifact_name: mlua-gen-windows-x64
+            binary_name: mlua-gen.exe
 
     steps:
       - name: Checkout repository
