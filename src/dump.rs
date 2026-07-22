@@ -1,14 +1,14 @@
 use crate::config;
 use anyhow::{Error, Result};
-use std::fs::{read_to_string, File};
+use serde::Deserialize;
+use std::fs::{File, read_to_string};
 use std::io::Write;
 use std::path::Path;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct VersionOnlyDump {
-    defgen_version: i32
+    defgen_version: i32,
 }
 
 pub fn download_dump(to: &Path) -> Result<()> {

@@ -13,15 +13,17 @@ use std::sync::OnceLock;
 #[command(version, about = "MangLua definitions generator")]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Generate definitions")]
     Generate {
         dump: Option<PathBuf>,
         output: Option<PathBuf>,
     },
+    #[command(about = "Install & update MangLua dump")]
     Dump {
         #[command(subcommand)]
         command: DumpCommands,
@@ -56,21 +58,26 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let default_path = PathBuf::from("./dump.json");
-    match cli.command {
+    let default_dump_path = PathBuf::from("./dump.json");
+    let default_output_dir = PathBuf::from("./library");
+    match cli.command.unwrap_or(Commands::Generate {
+        dump: Some(default_dump_path.clone()),
+        output: Some(default_output_dir.clone()),
+    }) {
         Commands::Generate { dump, output } => {
-            let path = dump.unwrap_or(default_path);
-            let output_dir = output.unwrap_or(PathBuf::from("./library"));
+            let path = dump.unwrap_or(default_dump_path);
+            let output_dir = output.unwrap_or(default_output_dir);
             if path.exists() {
-                if output_dir.is_dir() {
+                if output_dir.exists() && !output_dir.is_dir() {
+                    anyhow::bail!("Output directory {output_dir:?} is not a directory");
+                } else {
                     create_dir_all(&output_dir)
                         .context(format!("Failed to create output directory {output_dir:?}"))?;
-                    generate_definitions(output_dir.as_path()).context(format!(
+                    println!("Generating definition files...");
+                    generate_definitions(path.as_path(), output_dir.as_path()).context(format!(
                         "Failed to generate definitions in {output_dir:?} for {path:?}"
                     ))?;
                     println!("Definition files successfully generated in {output_dir:?}");
-                } else {
-                    anyhow::bail!("Output directory {output_dir:?} is not a directory");
                 }
             } else {
                 anyhow::bail!("Dump {path:?} does not exist");
@@ -78,7 +85,7 @@ fn main() -> Result<()> {
         }
         Commands::Dump { command } => match command {
             DumpCommands::Version { target } => {
-                let path = target.unwrap_or(default_path);
+                let path = target.unwrap_or(default_dump_path);
                 if path.exists() {
                     println!(
                         "Version of {path:?} is {}",
@@ -90,8 +97,9 @@ fn main() -> Result<()> {
                 }
             }
             DumpCommands::Update { target } => {
-                let path = target.unwrap_or(default_path);
+                let path = target.unwrap_or(default_dump_path);
                 if path.exists() {
+                    println!("Checking version...");
                     let actual = get_actual_dump_version(path.as_path())
                         .context(format!("Failed to get actual dump version of {path:?}"))?;
                     let expected = get_expected_dump_version().context(format!(
@@ -120,7 +128,8 @@ fn main() -> Result<()> {
                 }
             }
             DumpCommands::Install { path } => {
-                let path = path.unwrap_or(default_path);
+                let path = path.unwrap_or(default_dump_path);
+                println!("Downloading dump...");
                 download_dump(path.as_path()).context(format!(
                     "Failed to download dump to {path:?} from {}",
                     config().dump_url
