@@ -36,8 +36,6 @@ struct Parameter {
     name: String,
     r#type: String,
     optional: bool,
-    // Meaning: is current parameter represents parameters array for reflection methods
-    is_params: bool,
     default: Option<Value>,
 }
 
@@ -64,7 +62,6 @@ struct Field {
 #[serde(rename_all = "camelCase")]
 struct Method {
     name: String,
-    r#static: bool,
     return_type: String,
     parameters: Vec<Parameter>,
 }
@@ -121,11 +118,9 @@ pub fn generate_definitions(dump: &Path, output: &Path) -> Result<()> {
                 )
                 .as_str();
             }
-            let call_operator = if method.r#static { ":" } else { "." };
             definition += format!(
-                "function {}{}{}({}) end\n\n",
+                "function {}.{}({}) end\n\n",
                 t.lua_name,
-                call_operator,
                 method.name,
                 get_method_params(&method.parameters)
             )
