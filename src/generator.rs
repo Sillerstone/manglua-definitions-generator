@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::{File, read_to_string};
 use std::io::Write;
+use std::ops::Add;
 use std::path::Path;
 
 #[derive(Deserialize, Debug)]
@@ -71,14 +72,15 @@ pub fn generate_definitions(dump: &Path, output: &Path) -> Result<()> {
     let mut types_mapping: HashMap<&String, &String> =
         HashMap::with_capacity(dump.type_count as usize);
     let native_types = HashMap::from([
+        ("System.Byte".to_string(), "integer".to_string()),
+        ("System.Int32".to_string(), "integer".to_string()),
+        ("System.Int64".to_string(), "integer".to_string()),
         ("System.Single".to_string(), "number".to_string()),
         ("System.Boolean".to_string(), "boolean".to_string()),
         ("System.String".to_string(), "string".to_string()),
         ("System.Object".to_string(), "any".to_string()),
-        ("System.Int32".to_string(), "integer".to_string()),
-        ("System.Int64".to_string(), "integer".to_string()),
-        ("System.Byte".to_string(), "integer".to_string()),
         ("System.Action".to_string(), "fun()".to_string()),
+        ("MangLua.Proxies.LuaFunctionRef".to_string(), "fun()".to_string()),
     ]);
     for (key, value) in &native_types {
         types_mapping.insert(key, value);
@@ -146,25 +148,54 @@ pub fn generate_definitions(dump: &Path, output: &Path) -> Result<()> {
 }
 
 trait F {
-    fn get_or_fallback<'a>(&'a self, key: &'a String) -> &'a String;
+    fn get_or_fallback<'a>(&'a self, key: &'a String) -> String;
 }
 
 impl F for HashMap<&String, &String> {
-    fn get_or_fallback<'a>(&'a self, key: &'a String) -> &'a String {
-        self.get(key).unwrap_or(&key)
+    fn get_or_fallback<'a>(&'a self, key: &'a String) -> String {
+        if key.ends_with("[]") {
+            let mut new_key = key.clone();
+            new_key.pop();
+            new_key.pop();
+            let t = self.get(&new_key).map(|s| { (*s).clone().add("[]") });
+            return t.unwrap_or(key.clone());
+        } else if key.starts_with("System.Collections.Generic.List<") {
+            let parts: Vec<&str> = key.split("<").collect();
+            let mut inner_type = parts[1].to_string();
+            inner_type.pop();
+            return (*self.get(&inner_type).unwrap_or(&key)).clone() + "[]"
+        } else if key.starts_with("System.Collections.Generic.Dictionary<") {
+            let parts: Vec<&str> = key.split("<").collect();
+            let parts: Vec<&str> = parts[1].split(", ").collect();
+            let entry_key = *self.get(&parts[0].to_string()).unwrap_or(&key);
+            let mut value_type = parts[1].to_string();
+            value_type.pop();
+            let entry_value = *self.get(&value_type).unwrap_or(&key);
+            let mut t = "{".to_string();
+            t += format!(" [{}]: {} ", entry_key, entry_value).as_str();
+            t += "}";
+            return t;
+        } else if key.starts_with("System.Action<") {
+            let parts: Vec<&str> = key.split("<").collect();
+            let mut inner_type = parts[1].to_string();
+            inner_type.pop();
+            return format!("fun({})", *self.get(&inner_type).unwrap_or(&key));
+        }
+        (*self.get(key).unwrap_or(&key)).clone()
     }
 }
 
 fn handle_param(param: &Parameter, types_mapping: &HashMap<&String, &String>) -> String {
+    let param_type = types_mapping.get_or_fallback(&param.r#type);
     let param_type = if param.optional {
-        &(param.r#type.clone() + "?")
+        param_type.clone() + "?"
     } else {
-        &param.r#type.clone()
+        param_type.clone()
     };
     format!(
         "---@param {} {} {}\n",
         param.name,
-        types_mapping.get_or_fallback(param_type),
+        param_type,
         get_param_description(param)
     )
 }
