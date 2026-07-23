@@ -70,6 +70,19 @@ pub fn generate_definitions(dump: &Path, output: &Path) -> Result<()> {
     let dump: Dump = serde_json::from_str(read_to_string(dump)?.as_str())?;
     let mut types_mapping: HashMap<&String, &String> =
         HashMap::with_capacity(dump.type_count as usize);
+    let native_types = HashMap::from([
+        ("System.Single".to_string(), "number".to_string()),
+        ("System.Boolean".to_string(), "boolean".to_string()),
+        ("System.String".to_string(), "string".to_string()),
+        ("System.Object".to_string(), "any".to_string()),
+        ("System.Int32".to_string(), "integer".to_string()),
+        ("System.Int64".to_string(), "integer".to_string()),
+        ("System.Byte".to_string(), "integer".to_string()),
+        ("System.Action".to_string(), "fun()".to_string()),
+    ]);
+    for (key, value) in &native_types {
+        types_mapping.insert(key, value);
+    }
     for t in &dump.types {
         types_mapping.insert(&t.clr_name, &t.lua_name);
     }
